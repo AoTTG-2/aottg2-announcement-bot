@@ -1,0 +1,78 @@
+name: Post to Discord
+
+on:
+  push:
+    paths:
+      - 'posts/**'
+      - 'test-posts/**'
+      - 'changelog/**'
+      - 'test-changelog/**'
+
+jobs:
+  post-to-discord:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 2
+
+      - name: Get changed files
+        id: changed-files
+        uses: tj-actions/changed-files@v35
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install discord.py
+
+      - name: Post to Discord
+        env:
+          DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
+          ANNOUNCEMENT_ID: ${{ secrets.ANNOUNCEMENT_ID }}
+          CHANGELOG_ID: ${{ secrets.CHANGELOG_ID }}
+          TEST_ANNOUNCEMENT_ID: ${{ secrets.TEST_ANNOUNCEMENT_ID }}
+          TEST_CHANGELOG_ID: ${{ secrets.TEST_CHANGELOG_ID }}
+        run: |
+          import discord
+          import asyncio
+          import os
+
+          client = discord.Client(intents=discord.Intents.default())
+
+          @client.event
+          async def on_ready():
+              changed_files = '${{ steps.changed-files.outputs.all_changed_files }}'.split()
+              
+              for file in changed_files:
+                  content = ""
+                  channel_id = None
+                  mention = ""
+
+                  if file.startswith('posts/') and file.endswith('.md'):
+                      channel_id = int(os.environ['ANNOUNCEMENT_ID'])
+                      mention = "@everyone"
+                  elif file.startswith('test-posts/') and file.endswith('.md'):
+                      channel_id = int(os.environ['TEST_ANNOUNCEMENT_ID'])
+                      mention = "@gisketch"
+                  elif file.startswith('changelog/') and file.endswith('.md'):
+                      channel_id = int(os.environ['CHANGELOG_ID'])
+                  elif file.startswith('test-changelog/') and file.endswith('.md'):
+                      channel_id = int(os.environ['TEST_CHANGELOG_ID'])
+
+                  if channel_id:
+                      with open(file, 'r') as f:
+                          content = f.read()
+                      
+                      channel = client.get_channel(channel_id)
+                      message = f"{mention}\n\n{content}" if mention else content
+                      await channel.send(message)
+              
+              await client.close()
+
+          client.run(os.environ['DISCORD_BOT_TOKEN'])
+        shell: python
