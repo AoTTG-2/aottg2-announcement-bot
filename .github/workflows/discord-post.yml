@@ -59,7 +59,7 @@ jobs:
                       mention = "@everyone"
                   elif file.startswith('test-posts/') and file.endswith('.md'):
                       channel_id = int(os.environ['TEST_ANNOUNCEMENT_ID'])
-                      mention = "@everyone"
+                      mention = "@gisketch"
                   elif file.startswith('changelog/') and file.endswith('.md'):
                       channel_id = int(os.environ['CHANGELOG_ID'])
                   elif file.startswith('test-changelog/') and file.endswith('.md'):
